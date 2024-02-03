@@ -1,4 +1,6 @@
 const WebSocket = require('ws');
+const { v4: uuidv4 } = require('uuid');
+const { json } = require('express');
 const wss = new WebSocket.Server({ port: 3001 });
 
 const clients = new Map();
@@ -17,49 +19,53 @@ wss.on('connection', (ws) => {
 
     clients.set(ws, metadata);
 
-    outbound = JSON.stringify({
+    message = {
         type: 1,
         id: id
-    });
-    sendToAll(outbound);
+    };
+    sendToAll(ws, message);
     console.log(metadata);
 
     ws.on('message', (messageAsString) => {
         const message = JSON.parse(messageAsString);
         const metadata = clients.get(ws);
 
-        message.type = 0;
-        message.sender = metadata.id;
-        message.color = metadata.color;
+        message["type"] = 0;
+        message["sender"] = metadata["id"];
+        message["color"] = metadata["color"];
 
-        const outbound = JSON.stringify(message);
-        sendToAll(outbound);
+        sendToAll(ws, message);
 
-        console.log(message.sender + ": " + message.text);
+        console.log(message["sender"] + ": " + message["text"]);
     });
 
     ws.on("close", () => {
-        leftId = clients.get(ws).id;
-        outbound = JSON.stringify({
+        leftId = clients.get(ws)["id"];
+        
+        message = {
             type: 2,
             id: leftId
-        });
+        };
 
-        sendToAll(outbound);
+        sendToAll(ws, message);
 
         clients.delete(ws);
       });
 })
 
-function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-}
+//sends a message to everyone subscribed to the channel
+function sendToAll(ws, message) {
+    senderId = clients.get(ws)["id"];
+    message["time"] = (new Date()).getTime();
+    
+    outbound = JSON.stringify(message);
 
-function sendToAll(message) {
     [...clients.keys()].forEach((client) => {
-        client.send(message);
+        if (clients.get(client)["id"] != senderId) client.send(outbound);
+        else if (message["type"] == 0) { // only if it's standard message add attribute "sameUser", and set it to true
+            toSender = message
+            toSender["sameUser"] = true;
+            client.send(JSON.stringify(toSender));
+        }
     });
 }
