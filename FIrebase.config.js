@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app"
-import { getFirestore, collection, addDoc } from "firebase/firestore"
+import { getFirestore, collection, addDoc, query, where, getDocs } from "firebase/firestore"
+import { sha256 } from 'js-sha256'
 
 const firebaseConfig = {
   apiKey: "AIzaSyA11_Orf7gStDculreYJlSbrD4ZVPhY9bQ",
@@ -28,9 +29,23 @@ async function addMessageToFirestore(message) {
   }
 }
 
+const logInSubmit = async(phoneNumber, password) => {
+
+  const q = query(collection(db, "users"), where("phoneNumber", "==", phoneNumber), where("password", "==", sha256(password)));
+
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+      console.log("Login successful.")
+      return true
+  }
+
+  return false
+}
+
 export {
     addDoc,
     collection,
     db,
-    addMessageToFirestore
+    addMessageToFirestore,
+    logInSubmit
 }

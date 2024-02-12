@@ -1,4 +1,4 @@
-import { addMessageToFirestore } from './FIrebase.config.js' // use later
+import { addMessageToFirestore } from './Firebase.config.js' // use later
 import { Server } from 'socket.io';
 import server from './httpServer.js';
 
