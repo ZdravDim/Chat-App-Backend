@@ -6,7 +6,8 @@ import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
 
 const jwt_key = "aasgdyakk"
-const jwtExpirySeconds = 20
+const jwtExpirySeconds = 10
+const oneDay = 24 * 60 * 60 * 1000 // in miliseconds
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.post('/login', function (req, res) {
+app.post('/api/login', function (req, res) {
 
     const { phoneNumber, password } = req.body;
     if (!phoneNumber || !password) return res.status(400).send('Missing phoneNumber or password');
@@ -25,46 +26,52 @@ app.post('/login', function (req, res) {
     const logInSuccess = logInSubmit(req.body.phoneNumber, req.body.password)
 
     if (logInSuccess) {
-
         newCookie(res, phoneNumber)
-        res.status(200)
-        res.send()
-
-    } else {
-
-        res.status(401)
-        res.send()
+        return res.status(200).send()
     }
+
+    return res.status(401).send()
+    
 });
 
-app.get('/logout', function(req, res) {
+app.get('/api/logout', function(req, res) {
     
     emptyCookie(res)
-    res.status(200)
-    res.send()
+    return res.status(200).send()
 })
 
-app.get('/auth', function(req, res) {
+app.post('/api/auth', function(req, res) {
 
-    const token = req.cookies.jwt
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
     
     try {
 
-        const decoded_payload = verifyToken(token)
-
-        return res.status(200).send({ status: "logged-in", token: token })
+        verifyToken(access_token)
+        console.log("valid")
+        return res.status(200).send()
 
     } catch(error) {
 
-        if (error.name === 'TokenExpiredError') {
+        if (!access_token) {
+            try {
+                const token_payload = verifyToken(refresh_token)
 
-            const expired_payload = jwt.decode(token)
-            new_token = newCookie(res, expired_payload["phoneNumber"])
-            return res.status(200).send({ status: "logged-in", token: new_token })
+                // generate access token based on given refresh token
+                const now = Date.now()
+                token_payload.iat = now
+                token_payload.exp = now + jwtExpirySeconds * 1000
+                const access_token = jwt.sign({ token_payload }, jwt_key);
+                res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
 
+                return res.status(200).send()
+                
+            }
+            catch (error) { return res.status(401).send() }
         }
-
-        return res.status(401).send({ status: "logged-out" })
+        
+        console.log("bad")
+        return res.status(401).send()
     }
 })
 
@@ -80,29 +87,48 @@ const verifyToken = (token) => {
 
 // sets new cookie that stores empty jwt
 const emptyCookie = (res) => {
-    res.cookie('jwt', null, {
+
+    res.cookie('access_token', null, {
         maxAge: 0,
         httpOnly: true,
         sameSite: 'None',
         secure: true
     });
+
+    res.cookie('refresh_token', null, {
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: 'None',
+        secure: true
+    });
+
 }
 
 // sets new cookie that stores new valid jwt
 const newCookie = (res, phoneNumber) => {
 
-    const token = jwt.sign({
-        phoneNumber,
-        createdAt: Date.now() // to ensure every token is unique
-    }, jwt_key, {
-        algorithm: "HS256",
-        expiresIn: jwtExpirySeconds,
-    })
+    const now = Date.now()
 
-    res.cookie('jwt', token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
+    const token_payload = {
+        sub: phoneNumber,
+        iat: now,
+        exp: now + jwtExpirySeconds * 1000
+    }
 
-    console.log('New token: ', token)
-    return token
+    const access_token = jwt.sign(token_payload, jwt_key)
+
+    token_payload.exp += oneDay
+
+    const refresh_token = jwt.sign(token_payload, jwt_key)
+
+    res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
+    res.cookie('refresh_token', refresh_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: oneDay})
+
+    console.log('New tokens: ')
+    console.log('Access: ', access_token)
+    console.log('Refresh: ', refresh_token)
+
+    return access_token
 }
 
 export {
