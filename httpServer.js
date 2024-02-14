@@ -1,8 +1,12 @@
-import express from 'express';
+import express, { json } from 'express';
 import http from 'http';
 import { logInSubmit } from './Firebase.config.js';
 import cors from 'cors';
 import cookieParser from "cookie-parser";
+import jwt from 'jsonwebtoken';
+
+const jwt_key = "aasgdyakk"
+const jwtExpirySeconds = 20
 
 const app = express();
 
@@ -21,10 +25,13 @@ app.post('/login', function (req, res) {
     const logInSuccess = logInSubmit(req.body.phoneNumber, req.body.password)
 
     if (logInSuccess) {
-        res.cookie('jwt', 'asdfasdf.asdfasdfasdf.asdfasdf', {httpOnly: true, sameSite: 'None', secure: true}) // change logic to sign jwt
+
+        newCookie(res, phoneNumber)
         res.status(200)
         res.send()
+
     } else {
+
         res.status(401)
         res.send()
     }
@@ -32,23 +39,33 @@ app.post('/login', function (req, res) {
 
 app.get('/logout', function(req, res) {
     
-    res.cookie('jwt', null, {
-        expires: new Date(0),
-        httpOnly: true,
-        sameSite: 'None',
-        secure: true
-      });
+    emptyCookie(res)
     res.status(200)
     res.send()
 })
 
-app.get('/status', function(req, res) {
+app.get('/auth', function(req, res) {
+
+    const token = req.cookies.jwt
     
-    const jwt = req.cookies.jwt
-    console.log('jwt: ', jwt)
-    res.status(200)
-    if (jwt != null) return res.send({ status: "logged-in" }) // change logic to verify jwt
-    res.send({ status: "logged-out" })
+    try {
+
+        const decoded_payload = verifyToken(token)
+
+        return res.status(200).send({ status: "logged-in", token: token })
+
+    } catch(error) {
+
+        if (error.name === 'TokenExpiredError') {
+
+            const expired_payload = jwt.decode(token)
+            new_token = newCookie(res, expired_payload["phoneNumber"])
+            return res.status(200).send({ status: "logged-in", token: new_token })
+
+        }
+
+        return res.status(401).send({ status: "logged-out" })
+    }
 })
 
 app.use((err, req, res, next) => {
@@ -56,4 +73,39 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-export default server
+// verifies jwt
+const verifyToken = (token) => {
+    return jwt.verify(token, jwt_key)
+}
+
+// sets new cookie that stores empty jwt
+const emptyCookie = (res) => {
+    res.cookie('jwt', null, {
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: 'None',
+        secure: true
+    });
+}
+
+// sets new cookie that stores new valid jwt
+const newCookie = (res, phoneNumber) => {
+
+    const token = jwt.sign({
+        phoneNumber,
+        createdAt: Date.now() // to ensure every token is unique
+    }, jwt_key, {
+        algorithm: "HS256",
+        expiresIn: jwtExpirySeconds,
+    })
+
+    res.cookie('jwt', token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
+
+    console.log('New token: ', token)
+    return token
+}
+
+export {
+    server,
+    verifyToken
+}
