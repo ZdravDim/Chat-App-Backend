@@ -9,6 +9,7 @@ server.listen(3001, () => {
 });
 
 io.on("connection", (socket) => {
+
     console.log("connected")
   
     socket.on("message", (data) => {
@@ -22,10 +23,12 @@ io.on("connection", (socket) => {
     });
 
 	socket.on('join', (roomName) => {
+		console.log(socket.id + ' joined room: ' + roomName)
 		socket.join(roomName)
 	})
 	
 	socket.on('leave', (roomName) => {
+		console.log(socket.id + ' left room: ' + roomName)
 		socket.leave(roomName)
 	})
 })
