@@ -1,12 +1,12 @@
-import express, { json } from 'express';
+import express from 'express';
 import http from 'http';
-import { logInSubmit } from './Firebase.config.js';
+import { logInSubmit, deleteAccount, setDoc, doc, db, phoneAvailable } from './Firebase.config.js';
 import cors from 'cors';
 import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
 
 const jwt_key = "aasgdyakk"
-const jwtExpirySeconds = 10
+const jwtExpirySeconds = 300
 const oneDay = 24 * 60 * 60 * 1000 // in miliseconds
 
 const app = express();
@@ -18,12 +18,37 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.post('/api/login', function (req, res) {
+app.post('/api/phone-available', async function(req, res) {
+
+    const phoneNumber = req.body.phoneNumber
+    
+    try {
+        const available = await phoneAvailable(phoneNumber)
+        if (available) return res.status(200).send()
+        return res.status(409).send()
+    }
+    catch(error) {
+        console.log(error.message)
+        return res.status(500).send()
+    }
+})
+
+app.post('/api/sign-up', async function(req, res) {
+
+    const userData = req.body
+    const phoneNumber = userData.phoneNumber
+
+    await setDoc(doc(db, "users", phoneNumber), userData);
+
+    return res.status(200).send()
+})
+
+app.post('/api/login', async function (req, res) {
 
     const { phoneNumber, password } = req.body;
     if (!phoneNumber || !password) return res.status(400).send('Missing phoneNumber or password');
     
-    const logInSuccess = logInSubmit(req.body.phoneNumber, req.body.password)
+    const logInSuccess = await logInSubmit(req.body.phoneNumber, req.body.password)
 
     if (logInSuccess) {
         newCookie(res, phoneNumber)
@@ -40,6 +65,28 @@ app.get('/api/logout', function(req, res) {
     return res.status(200).send()
 })
 
+app.delete('/api/delete-account', async function(req, res) {
+    
+    const access_token = req.cookies.access_token
+
+    try {
+        
+        const token_payload = verifyToken(access_token)
+        
+        const phoneNumber = token_payload.sub
+        
+        await deleteAccount(phoneNumber)
+
+        emptyCookie(res)
+        return res.status(200).send()
+
+    } catch(error) {
+        
+        console.log("Delete account not successful: ", error.message)
+        return res.status(500).send()
+    }
+})
+
 app.post('/api/auth', function(req, res) {
 
     const access_token = req.cookies.access_token
@@ -48,7 +95,7 @@ app.post('/api/auth', function(req, res) {
     try {
 
         verifyToken(access_token)
-        console.log("valid")
+        console.log("valid token")
         return res.status(200).send()
 
     } catch(error) {

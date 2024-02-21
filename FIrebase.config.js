@@ -1,7 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app"
-import { getFirestore, collection, addDoc, query, where, getDocs } from "firebase/firestore"
-import { sha256 } from 'js-sha256'
+import { getFirestore, collection, addDoc, setDoc, getDoc, deleteDoc, doc } from "firebase/firestore"
 
 const firebaseConfig = {
   apiKey: "AIzaSyA11_Orf7gStDculreYJlSbrD4ZVPhY9bQ",
@@ -31,21 +30,38 @@ async function addMessageToFirestore(message) {
 
 const logInSubmit = async(phoneNumber, password) => {
 
-  const q = query(collection(db, "users"), where("phoneNumber", "==", phoneNumber), where("password", "==", sha256(password)));
+	const docRef = doc(db, "users", phoneNumber);
+	const docSnap = await getDoc(docRef);
 
-  const querySnapshot = await getDocs(q);
-  if (!querySnapshot.empty) {
-      console.log("Login successful.")
-      return true
-  }
+	if (docSnap.exists() && docSnap.data().password === password) {
+		console.log("Login successful.")
+		return true
+	}
 
-  return false
+	return false
+
+}
+
+const deleteAccount = async(phoneNumber) => {
+
+	await deleteDoc(doc(db, "users", phoneNumber))
+	
+	console.log('Account with phone: ' + phoneNumber + ' is deleted')
+}
+
+const phoneAvailable = async(phoneNumber) => {
+
+	const docRef = doc(db, "users", phoneNumber);
+	const docSnap = await getDoc(docRef);
+	return !docSnap.exists()
 }
 
 export {
-    addDoc,
-    collection,
-    db,
+	db,
+	doc,
+	setDoc,
     addMessageToFirestore,
-    logInSubmit
+    logInSubmit,
+    deleteAccount,
+	phoneAvailable
 }
