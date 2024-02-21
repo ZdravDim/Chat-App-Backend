@@ -14,10 +14,18 @@ io.on("connection", (socket) => {
     socket.on("message", (data) => {
 		console.log("Message received:", data);
 
-		io.emit("message", data); //socket.emit()
+		io.emit("message", data);
     });
   
     socket.on("disconnect", () => {
       console.log("disconnected");
     });
-  });
+
+	socket.on('join', (roomName) => {
+		socket.join(roomName)
+	})
+	
+	socket.on('leave', (roomName) => {
+		socket.leave(roomName)
+	})
+})
