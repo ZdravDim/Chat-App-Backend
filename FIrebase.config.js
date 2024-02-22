@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app"
-import { getFirestore, collection, addDoc, setDoc, getDoc, deleteDoc, doc } from "firebase/firestore"
+import { getFirestore, collection, addDoc, setDoc, getDoc, getDocs, deleteDoc, doc } from "firebase/firestore"
 
 const firebaseConfig = {
   apiKey: "AIzaSyA11_Orf7gStDculreYJlSbrD4ZVPhY9bQ",
@@ -60,8 +60,12 @@ export {
 	db,
 	doc,
 	setDoc,
-    addMessageToFirestore,
-    logInSubmit,
-    deleteAccount,
+  getDoc,
+  getDocs,
+  deleteDoc,
+  collection,
+  addMessageToFirestore,
+  logInSubmit,
+  deleteAccount,
 	phoneAvailable
 }

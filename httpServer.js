@@ -1,6 +1,6 @@
 import express from 'express';
 import http from 'http';
-import { logInSubmit, deleteAccount, setDoc, doc, db, phoneAvailable } from './Firebase.config.js';
+import { logInSubmit, deleteAccount, collection, setDoc, getDoc, getDocs, doc, db, phoneAvailable } from './Firebase.config.js';
 import cors from 'cors';
 import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
@@ -120,6 +120,101 @@ app.post('/api/auth', function(req, res) {
         console.log("bad")
         return res.status(401).send()
     }
+})
+
+app.post('/api/user-data', async function(req, res) {
+
+    const access_token = req.cookies.access_token
+
+    try {
+
+        const token_payload = verifyToken(access_token)
+
+        const phoneNumber = token_payload.sub
+
+        console.log("Get user data for: " + phoneNumber)
+
+        const docRef = doc(db, "users", phoneNumber);
+	    const docSnap = await getDoc(docRef);
+
+        const userData = docSnap.data()
+        delete userData["password"]
+
+        return res.status(200).send(userData)
+    }
+    catch(error) {
+
+        console.log("Error reading user data: " + error.message)
+        return res.status(500).send()
+    }
+})
+
+app.post('/api/user-rooms', async function(req, res) {
+
+    const access_token = req.cookies.access_token
+
+    try {
+
+        const token_payload = verifyToken(access_token)
+
+        const phoneNumber = token_payload.sub
+
+        let roomsArray = []
+
+        const querySnapshot = await getDocs(collection(db, "rooms"));
+
+        const promises = [];
+
+        querySnapshot.forEach(async(document) => {
+
+            console.log("Checking if user is inside room: " + document.id)
+
+            const userDocRef = doc(db, "rooms", document.id, "users", phoneNumber);
+
+            promises.push(getDoc(userDocRef).then((userSnapshot) => {
+                if (userSnapshot.exists()) {
+                    roomsArray.push(document.id);
+                }
+            }));
+
+        });
+
+        await Promise.all(promises);
+
+        return res.status(200).send({ rooms: roomsArray })
+
+    }
+    catch(error) {
+        console.log("Cannot get user rooms: " + error.message)
+        return res.status(409).send()
+    }
+
+})
+
+app.post('/api/room-exists', async function(req, res) {
+
+    const access_token = req.cookies.access_token
+
+    try {
+
+        verifyToken(access_token)
+
+        const roomName = req.body.roomName
+
+        console.log("Check if room exists: " + roomName)
+
+        const docRef = doc(db, "rooms", roomName);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+
+        return res.status(200).send({ roomExists: false })
+    }
+    catch(error) {
+        console.log(error.message)
+        return res.status(409).send()
+    }
+
 })
 
 app.use((err, req, res, next) => {

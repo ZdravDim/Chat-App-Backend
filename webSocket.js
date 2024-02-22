@@ -1,4 +1,4 @@
-import { addMessageToFirestore } from './Firebase.config.js' // use later
+import { addMessageToFirestore, deleteDoc, setDoc, doc, db } from './Firebase.config.js'
 import { Server } from 'socket.io';
 import { server } from './httpServer.js';
 
@@ -10,25 +10,52 @@ server.listen(3001, () => {
 
 io.on("connection", (socket) => {
 
-    console.log("connected")
+    console.log(socket.id + " connected")
   
     socket.on("message", (data) => {
-		console.log("Message received:", data);
-
-		io.emit("message", data);
+		// console.log("Message received:", data);
+		// io.emit("message", data);
     });
+
+	socket.on('message-to-room', (data) => {
+		console.log('Message to room: ' + data.roomName + " -> " + data.message)
+		io.to(data.roomName).emit('message', data)
+	})
   
     socket.on("disconnect", () => {
-      console.log("disconnected");
+      console.log(socket.id + " disconnected");
     });
 
-	socket.on('join', (roomName) => {
-		console.log(socket.id + ' joined room: ' + roomName)
-		socket.join(roomName)
+	socket.on('join', async(phoneNumber, roomName, createRoom) => {
+		
+		try {
+			if (createRoom) {
+				const roomData = { roomName: roomName }
+				await setDoc(doc(db, "rooms", roomName), roomData);
+			}
+			
+			const userData = { phoneNumber: phoneNumber }
+	
+			const userRef = doc(db, "rooms", roomName, "users", phoneNumber);
+			await setDoc(userRef, userData);
+	
+			console.log(socket.id + ' joined room: ' + roomName)
+			socket.join(roomName)
+		}
+		catch(error) {
+			console.log("Error joining room: " + error.message)
+		}
 	})
 	
-	socket.on('leave', (roomName) => {
-		console.log(socket.id + ' left room: ' + roomName)
-		socket.leave(roomName)
+	socket.on('leave', async(phoneNumber, roomName) => {
+		try {
+			const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
+			await deleteDoc(userRef)
+			console.log(socket.id + ' left room: ' + roomName)
+			socket.leave(roomName)
+		}
+		catch(error) {
+			console.log(error.message)
+		}
 	})
 })
