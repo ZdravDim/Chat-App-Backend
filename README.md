@@ -13,7 +13,7 @@
 
 ## Installation
 
-- Use the `git clone https://github.com/ZdravDim/Chat-App-Front-Web.git` command to clone the project and then `npm install` to install dependencies.
+- Use the `git clone https://github.com/ZdravDim/Chat-App-Backend.git` command to clone the project and then `npm install` to install dependencies.
 
 ## Usage
 
