@@ -51,15 +51,19 @@ io.on("connection", (socket) => {
 		}
 	})
 	
-	socket.on('leave', async(phoneNumber, roomName) => {
+	socket.on('leave', async(phoneNumber, roomName, leaveFromFirebase) => {
 		try {
-			const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
-			await deleteDoc(userRef)
+
+			if (leaveFromFirebase) {
+				const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
+				await deleteDoc(userRef)
+			}
+			
 			console.log(socket.id + ' left room: ' + roomName)
 			socket.leave(roomName)
 		}
 		catch(error) {
-			console.log(error.message)
+			console.log("Error leaving room: " + error.message)
 		}
 	})
 })

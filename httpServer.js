@@ -150,6 +150,25 @@ app.post('/api/user-data', async function(req, res) {
     }
 })
 
+app.post('/api/room-messages', async function(req, res) { 
+
+    const roomName = req.body.roomName
+    const access_token = req.cookies.access_token
+
+    try {
+        verifyToken(access_token)
+        let messagesArray = []
+        //const querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
+        //querySnapshot.forEach((message) => { messagesArray.push(message) }) 
+    
+        return res.status(200).send({ messagesArray : messagesArray })
+    } 
+    catch(error) {
+        console.log("Error loading room messages " + error.message)
+        return res.status(500).send()
+    }
+})
+
 app.post('/api/user-rooms', async function(req, res) {
 
     const access_token = req.cookies.access_token
@@ -162,7 +181,7 @@ app.post('/api/user-rooms', async function(req, res) {
 
         let roomsArray = []
 
-        const querySnapshot = await getDocs(collection(db, "rooms"));
+        const querySnapshot = await getDocs(collection(db, "rooms"))
 
         const promises = [];
 
