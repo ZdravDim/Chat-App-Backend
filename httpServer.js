@@ -36,6 +36,7 @@ app.post('/api/phone-available', async function(req, res) {
 app.post('/api/sign-up', async function(req, res) {
 
     const userData = req.body
+    userData.userColor = '#' + Math.floor(Math.random() * 16777215).toString(16)
     const phoneNumber = userData.phoneNumber
 
     await setDoc(doc(db, "users", phoneNumber), userData);
@@ -166,8 +167,6 @@ app.post('/api/user-rooms', async function(req, res) {
         const promises = [];
 
         querySnapshot.forEach(async(document) => {
-
-            console.log("Checking if user is inside room: " + document.id)
 
             const userDocRef = doc(db, "rooms", document.id, "users", phoneNumber);
 

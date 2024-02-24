@@ -2,6 +2,8 @@ import { addMessageToFirestore, deleteDoc, setDoc, doc, db } from './Firebase.co
 import { Server } from 'socket.io';
 import { server } from './httpServer.js';
 
+import { v4 as uuidv4 } from 'uuid'
+
 const io = new Server(server, { cors: { origin: "http://localhost:3000" } });
 
 server.listen(3001, () => {
@@ -12,16 +14,18 @@ io.on("connection", (socket) => {
 
     console.log(socket.id + " connected")
   
-    socket.on("message", (data) => {
-		// console.log("Message received:", data);
-		// io.emit("message", data);
+    socket.on("message", (messageData) => {
+		//...
     });
 
-	socket.on('message-to-room', (data) => {
-		console.log('Message to room: ' + data.roomName + " -> " + data.message)
-		io.to(data.roomName).emit('message', data)
+	socket.on('message-to-room', (messageData) => {
+		messageData.id = uuidv4()
+		messageData.timestamp = Date.now()
+		console.log('Message to room: ' + messageData.roomName + " -> " + messageData.messageBody)
+		io.to(messageData.roomName).emit('message', messageData)
+		addMessageToFirestore(messageData.roomName, messageData)
 	})
-  
+
     socket.on("disconnect", () => {
       console.log(socket.id + " disconnected");
     });

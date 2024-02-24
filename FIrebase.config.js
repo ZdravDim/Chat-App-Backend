@@ -19,13 +19,14 @@ const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
 
 // Function to add a message to Firestore
-async function addMessageToFirestore(message) {
-  try {
-    const docRef = await addDoc(collection(db, "messages"), message)
-    console.log("Message written with ID: ", docRef.id)
-  } catch (e) {
-    console.error("Error adding message to Firestore: ", e)
-  }
+async function addMessageToFirestore(roomName, messageData) {
+	try {
+		const messRef = doc(db, "rooms", roomName, "messages", messageData.id);
+		await setDoc(messRef, messageData);
+	}
+	catch (e) {
+		console.error("Error adding message to Firestore: ", e)
+	}
 }
 
 const logInSubmit = async(phoneNumber, password) => {
@@ -60,12 +61,12 @@ export {
 	db,
 	doc,
 	setDoc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  collection,
-  addMessageToFirestore,
-  logInSubmit,
-  deleteAccount,
+	getDoc,
+	getDocs,
+	deleteDoc,
+	collection,
+	addMessageToFirestore,
+	logInSubmit,
+	deleteAccount,
 	phoneAvailable
 }
