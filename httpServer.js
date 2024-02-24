@@ -31,6 +31,7 @@ app.post('/api/phone-available', async function(req, res) {
         console.log(error.message)
         return res.status(500).send()
     }
+
 })
 
 app.post('/api/sign-up', async function(req, res) {
@@ -39,9 +40,13 @@ app.post('/api/sign-up', async function(req, res) {
     userData.userColor = '#' + Math.floor(Math.random() * 16777215).toString(16)
     const phoneNumber = userData.phoneNumber
 
-    await setDoc(doc(db, "users", phoneNumber), userData);
-
-    return res.status(200).send()
+    try {
+        await setDoc(doc(db, "users", phoneNumber), userData);
+        return res.status(200).send()
+    }
+    catch(error) {
+        console.log("Error signing-up: " + error.message)
+    }
 })
 
 app.post('/api/login', async function (req, res) {
@@ -61,77 +66,41 @@ app.post('/api/login', async function (req, res) {
 });
 
 app.get('/api/logout', function(req, res) {
-    
+
     emptyCookie(res)
     return res.status(200).send()
 })
 
 app.delete('/api/delete-account', async function(req, res) {
     
-    const access_token = req.cookies.access_token
+    const phoneNumber = authenticateUser(req, res)
 
-    try {
+    if (phoneNumber) {
         
-        const token_payload = verifyToken(access_token)
-        
-        const phoneNumber = token_payload.sub
-        
-        await deleteAccount(phoneNumber)
+        try {
+            await deleteAccount(phoneNumber)
+            emptyCookie(res)
+            return res.status(200).send()
+        }
+        catch(error) { console.log("Error deleting account with number " + phoneNumber + ": " + error.message1) }
 
-        emptyCookie(res)
-        return res.status(200).send()
-
-    } catch(error) {
-        
-        console.log("Delete account not successful: ", error.message)
-        return res.status(500).send()
     }
+
+    return res.status(409).send()
 })
 
 app.post('/api/auth', function(req, res) {
 
-    const access_token = req.cookies.access_token
-    const refresh_token = req.cookies.refresh_token
-    
-    try {
+    if (authenticateUser(req, res)) return res.status(200).send()
+    return res.status(409).send()
 
-        verifyToken(access_token)
-        console.log("valid token")
-        return res.status(200).send()
-
-    } catch(error) {
-
-        if (!access_token) {
-            try {
-                const token_payload = verifyToken(refresh_token)
-
-                // generate access token based on given refresh token
-                const now = Date.now()
-                token_payload.iat = now
-                token_payload.exp = now + jwtExpirySeconds * 1000
-                const access_token = jwt.sign({ token_payload }, jwt_key);
-                res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
-
-                return res.status(200).send()
-                
-            }
-            catch (error) { return res.status(401).send() }
-        }
-        
-        console.log("bad")
-        return res.status(401).send()
-    }
 })
 
 app.post('/api/user-data', async function(req, res) {
 
-    const access_token = req.cookies.access_token
+    const phoneNumber = authenticateUser(req, res)
 
-    try {
-
-        const token_payload = verifyToken(access_token)
-
-        const phoneNumber = token_payload.sub
+    if (phoneNumber) {
 
         console.log("Get user data for: " + phoneNumber)
 
@@ -142,103 +111,135 @@ app.post('/api/user-data', async function(req, res) {
         delete userData["password"]
 
         return res.status(200).send(userData)
-    }
-    catch(error) {
 
-        console.log("Error reading user data: " + error.message)
-        return res.status(500).send()
     }
+
+    return res.status(409).send()
 })
 
 app.post('/api/room-messages', async function(req, res) { 
 
-    const roomName = req.body.roomName
-    const access_token = req.cookies.access_token
+    if (authenticateUser(req, res)) {
 
-    try {
-        verifyToken(access_token)
-        let messagesArray = []
-        //const querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
-        //querySnapshot.forEach((message) => { messagesArray.push(message) }) 
-    
-        return res.status(200).send({ messagesArray : messagesArray })
-    } 
-    catch(error) {
-        console.log("Error loading room messages " + error.message)
-        return res.status(500).send()
+        try {
+
+            const roomName = req.body.roomName
+            let messagesArray = []
+
+            const querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
+            querySnapshot.forEach((message) => { messagesArray.push(message.data()) })
+        
+            return res.status(200).send({ messagesArray : messagesArray })
+
+        }
+        catch(error) {
+            return res.status(500).send()
+        }
+
     }
+
+    return res.status(409).send()
 })
 
 app.post('/api/user-rooms', async function(req, res) {
 
-    const access_token = req.cookies.access_token
+    const phoneNumber = authenticateUser(req, res)
 
-    try {
+    if (phoneNumber) {
 
-        const token_payload = verifyToken(access_token)
+        try {
 
-        const phoneNumber = token_payload.sub
+            let roomsArray = []
+            const promises = []
 
-        let roomsArray = []
+            const querySnapshot = await getDocs(collection(db, "rooms"))
 
-        const querySnapshot = await getDocs(collection(db, "rooms"))
+            querySnapshot.forEach(async(document) => {
 
-        const promises = [];
+                const userDocRef = doc(db, "rooms", document.id, "users", phoneNumber);
 
-        querySnapshot.forEach(async(document) => {
+                promises.push(getDoc(userDocRef).then((userSnapshot) => {
+                    if (userSnapshot.exists()) {
+                        roomsArray.push(document.id);
+                    }
+                }));
 
-            const userDocRef = doc(db, "rooms", document.id, "users", phoneNumber);
+            });
 
-            promises.push(getDoc(userDocRef).then((userSnapshot) => {
-                if (userSnapshot.exists()) {
-                    roomsArray.push(document.id);
-                }
-            }));
+            await Promise.all(promises);
 
-        });
+            return res.status(200).send({ rooms: roomsArray })
 
-        await Promise.all(promises);
-
-        return res.status(200).send({ rooms: roomsArray })
-
-    }
-    catch(error) {
-        console.log("Cannot get user rooms: " + error.message)
-        return res.status(409).send()
+        }
+        catch(error) { console.log("Error reading rooms for user " + phoneNumber + ": " + error.message) }
     }
 
+    return res.status(409).send()
 })
 
 app.post('/api/room-exists', async function(req, res) {
 
-    const access_token = req.cookies.access_token
+    if (authenticateUser(req, res)) {
 
-    try {
+        try {
 
-        verifyToken(access_token)
+            const roomName = req.body.roomName
 
-        const roomName = req.body.roomName
+            console.log("Check if room exists: " + roomName)
 
-        console.log("Check if room exists: " + roomName)
+            const docRef = doc(db, "rooms", roomName);
+            const docSnap = await getDoc(docRef);
 
-        const docRef = doc(db, "rooms", roomName);
-        const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) return res.status(200).send({ roomExists: true })
 
-        if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+            return res.status(200).send({ roomExists: false })
 
-        return res.status(200).send({ roomExists: false })
-    }
-    catch(error) {
-        console.log(error.message)
-        return res.status(409).send()
+        }
+        catch(error) { console.log("Error checking if " + roomName + " exists: " + error.message) }
     }
 
+    return res.status(409)
 })
 
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
 });
+
+// returns user phone number if authentication is successful
+const authenticateUser = (req, res) => {
+
+    const access_token = req.cookies.access_token
+    const refresh_token = req.cookies.refresh_token
+    
+    try {
+
+        const token_payload = verifyToken(access_token)
+        console.log("Access token is valid")
+        return token_payload.sub
+
+    } catch(error) {
+
+        if (!access_token) {
+            try {
+                console.log("Generated new access token using refresh token")
+                const token_payload = verifyToken(refresh_token)
+
+                // generate access token based on given refresh token
+                const now = Date.now()
+                token_payload.iat = now
+                token_payload.exp = now + jwtExpirySeconds * 1000
+                const access_token = jwt.sign({ token_payload }, jwt_key);
+                res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
+                return token_payload.sub
+            }
+            catch (error) { return null }
+        }
+        
+        console.log("user not authenticated")
+        return null
+    }
+}
 
 // verifies jwt
 const verifyToken = (token) => {
