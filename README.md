@@ -1,9 +1,7 @@
 # Chat-App-Backend
 
 - Custom backend for Chat-App-Front
-
 - Http + WebSocket Server
-
 - The project is still in progress
 
 ## Technologies
