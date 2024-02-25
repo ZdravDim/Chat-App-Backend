@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
 
 const jwt_key = "aasgdyakk"
-const jwtExpirySeconds = 10
+const jwtExpirySeconds = 300
 const oneDay = 24 * 60 * 60 * 1000 // in miliseconds
 
 const app = express();
