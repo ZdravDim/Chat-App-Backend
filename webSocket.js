@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
 			const userRef = doc(db, "rooms", roomName, "users", phoneNumber);
 			await setDoc(userRef, userData);
 	
-			console.log(socket.id + ' joined room: ' + roomName)
+			console.log(phoneNumber + ' joined room: ' + roomName)
 			socket.join(roomName)
 		}
 		catch(error) {
@@ -59,7 +59,7 @@ io.on("connection", (socket) => {
 				await deleteDoc(userRef)
 			}
 			
-			console.log(socket.id + ' left room: ' + roomName)
+			console.log(phoneNumber + ' left room: ' + roomName)
 			socket.leave(roomName)
 		}
 		catch(error) {

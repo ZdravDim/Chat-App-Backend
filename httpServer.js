@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
 
 const jwt_key = "aasgdyakk"
-const jwtExpirySeconds = 300
+const jwtExpirySeconds = 10
 const oneDay = 24 * 60 * 60 * 1000 // in miliseconds
 
 const app = express();
@@ -215,7 +215,7 @@ const authenticateUser = (req, res) => {
     try {
 
         const token_payload = verifyToken(access_token)
-        console.log("Access token is valid")
+        console.log("Access token is valid (" + token_payload.sub + ")")
         return token_payload.sub
 
     } catch(error) {
@@ -229,7 +229,7 @@ const authenticateUser = (req, res) => {
                 const now = Date.now()
                 token_payload.iat = now
                 token_payload.exp = now + jwtExpirySeconds * 1000
-                const access_token = jwt.sign({ token_payload }, jwt_key);
+                const access_token = jwt.sign(token_payload, jwt_key);
                 res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
                 return token_payload.sub
             }
