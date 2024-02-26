@@ -2,12 +2,14 @@
 
 - Custom backend for Chat App Front
 - Http + WebSocket Server
-- The project is still in progress
+- Containerized app
+- Uploaded to Azure Cloud
 
 ## Technologies
 
 - Express.js + Firestore
 - Socket.IO
+- Docker
 
 ## Installation
 
