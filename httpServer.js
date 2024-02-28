@@ -13,7 +13,7 @@ const app = express();
 
 const server = http.createServer(app);
 
-app.use(cors({ origin: "https://zdravdim.github.io/Chat-App-Front-Web", credentials: true }));
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -96,20 +96,25 @@ app.post('/api/auth', function(req, res) {
 
 })
 
+export const getUserData = async(phoneNumber) => {
+    console.log("Get user data for: " + phoneNumber)
+
+    const docRef = doc(db, "users", phoneNumber);
+    const docSnap = await getDoc(docRef);
+
+    const userData = docSnap.data()
+    delete userData["password"]
+    
+    return userData
+}
+
 app.post('/api/user-data', async function(req, res) {
 
     const phoneNumber = authenticateUser(req, res)
 
     if (phoneNumber) {
 
-        console.log("Get user data for: " + phoneNumber)
-
-        const docRef = doc(db, "users", phoneNumber);
-	    const docSnap = await getDoc(docRef);
-
-        const userData = docSnap.data()
-        delete userData["password"]
-
+        const userData = await getUserData(phoneNumber)
         return res.status(200).send(userData)
 
     }
@@ -141,6 +146,31 @@ app.post('/api/room-messages', async function(req, res) {
     return res.status(409).send()
 })
 
+app.post('/api/user-exists', async function(req, res) {
+    if (authenticateUser(req, res)) {
+
+        try {
+
+            const phoneNumber = req.body.phoneNumber
+            
+            const docRef = doc(db, "users", phoneNumber);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) return res.status(200).send({"userExists": true})
+            
+            return res.status(200).send({"userExists": false})
+
+        }
+        catch(error) {
+            console.log("Error checking if user exists: " + error.message)
+            return res.status(500).send()
+        }
+
+    }
+
+    return res.status(409).send()
+})
+
 app.post('/api/user-rooms', async function(req, res) {
 
     const phoneNumber = authenticateUser(req, res)
@@ -160,7 +190,7 @@ app.post('/api/user-rooms', async function(req, res) {
 
                 promises.push(getDoc(userDocRef).then((userSnapshot) => {
                     if (userSnapshot.exists()) {
-                        roomsArray.push(document.id);
+                        roomsArray.push(document.data());
                     }
                 }));
 
@@ -196,6 +226,51 @@ app.post('/api/room-exists', async function(req, res) {
 
         }
         catch(error) { console.log("Error checking if " + roomName + " exists: " + error.message) }
+    }
+
+    return res.status(409)
+})
+
+app.post('/api/private-room-exists', async function(req, res) {
+
+    if (authenticateUser(req, res)) {
+
+        try {
+
+            const phoneNumber1 = req.body.phoneNumber1
+            const phoneNumber2 = req.body.phoneNumber2
+
+            let roomName = phoneNumber1 + phoneNumber2
+
+            console.log("Check if private room exists: " + roomName)
+
+            let docRef = doc(db, "rooms", roomName);
+            let docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+            
+            roomName = phoneNumber2 + phoneNumber1
+
+            console.log("Check if private room exists: " + roomName)
+
+            docRef = doc(db, "rooms", roomName);
+            docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+            
+            const data1 = await getUserData(phoneNumber1)
+            const data2 = await getUserData(phoneNumber2)
+            delete data1["userColor"]
+            delete data2["userColor"]
+            delete data1["phoneNumber"]
+            delete data2["phoneNumber"]
+            return res.status(200).send({ roomExists: false, user1: data1, user2: data2 })
+
+        }
+        catch(error) { 
+            console.log("Error checking if " + roomName + " exists: " + error.message)
+            return res.status(500).send()
+        }
     }
 
     return res.status(409)
