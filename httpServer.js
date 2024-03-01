@@ -223,8 +223,8 @@ app.post('/api/room-exists', async function(req, res) {
 
             if (docSnap.exists()) {
                 
-                const useRef = doc(db, "rooms", roomName, "users", phoneNumber);
-                const userDoc = await getDoc(docRef);
+                const userRef = doc(db, "rooms", roomName, "users", phoneNumber);
+                const userDoc = await getDoc(userRef);
 
                 return res.status(200).send({ roomExists: true, userIsJoined: userDoc.exists() })
             }
