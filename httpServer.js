@@ -36,7 +36,8 @@ app.post('/api/phone-available', async function(req, res) {
 
 app.post('/api/sign-up', async function(req, res) {
 
-    const userData = req.body
+    let userData = req.body
+    userData.incomingRequests = []
     userData.userColor = '#' + Math.floor(Math.random() * 16777215).toString(16)
     const phoneNumber = userData.phoneNumber
 

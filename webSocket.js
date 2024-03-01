@@ -101,6 +101,17 @@ io.on("connection", (socket) => {
 						name: userData2.name,
 						surname: userData2.surname
 					}
+					
+					console.log("Receiver number: " + receiverNumber)
+
+					const userRef = doc(db, "users", receiverNumber)
+					const userDoc = await getDoc(userRef)
+					const requestArray = userDoc.data().incomingRequests
+					console.log(requestArray)
+					console.log(roomName)
+					await updateDoc(userRef, {
+						incomingRequests:[roomName, ...requestArray]
+					})
 				}
 
 				await setDoc(doc(db, "rooms", roomName), roomData)
