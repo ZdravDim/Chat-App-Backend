@@ -214,13 +214,20 @@ app.post('/api/room-exists', async function(req, res) {
         try {
 
             const roomName = req.body.roomName
+            const phoneNumber = req.body.phoneNumber
 
-            console.log("Check if room exists: " + roomName)
+            console.log("Check if room exists for user: " + roomName + "(" + phoneNumber + ")")
 
             const docRef = doc(db, "rooms", roomName);
             const docSnap = await getDoc(docRef);
 
-            if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+            if (docSnap.exists()) {
+                
+                const useRef = doc(db, "rooms", roomName, "users", phoneNumber);
+                const userDoc = await getDoc(docRef);
+
+                return res.status(200).send({ roomExists: true, userIsJoined: userDoc.exists() })
+            }
 
             return res.status(200).send({ roomExists: false })
 
@@ -247,7 +254,19 @@ app.post('/api/private-room-exists', async function(req, res) {
             let docRef = doc(db, "rooms", roomName);
             let docSnap = await getDoc(docRef);
 
-            if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+            const data1 = await getUserData(phoneNumber1)
+            const data2 = await getUserData(phoneNumber2)
+            delete data1["userColor"]
+            delete data2["userColor"]
+            delete data1["phoneNumber"]
+            delete data2["phoneNumber"]
+
+            if (docSnap.exists()) return res.status(200).send({
+                roomExists: true,
+                roomName: roomName,
+                user1: data1,
+                user2: data2
+            })
             
             roomName = phoneNumber2 + phoneNumber1
 
@@ -256,15 +275,18 @@ app.post('/api/private-room-exists', async function(req, res) {
             docRef = doc(db, "rooms", roomName);
             docSnap = await getDoc(docRef);
 
-            if (docSnap.exists()) return res.status(200).send({ roomExists: true })
+            if (docSnap.exists()) return res.status(200).send({
+                roomExists: true,
+                roomName: roomName,
+                user1: data1,
+                user2: data2
+            })
             
-            const data1 = await getUserData(phoneNumber1)
-            const data2 = await getUserData(phoneNumber2)
-            delete data1["userColor"]
-            delete data2["userColor"]
-            delete data1["phoneNumber"]
-            delete data2["phoneNumber"]
-            return res.status(200).send({ roomExists: false, user1: data1, user2: data2 })
+            return res.status(200).send({
+                roomExists: false,
+                user1: data1,
+                user2: data2
+            })
 
         }
         catch(error) { 
