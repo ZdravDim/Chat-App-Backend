@@ -1,4 +1,4 @@
-import { addMessageToFirestore, deleteDoc, getDoc, updateDoc, setDoc, doc, db } from './Firebase.config.js'
+import { addMessageToFirestore, deleteDoc, getDoc, collection, getDocs, updateDoc, setDoc, doc, db } from './Firebase.config.js'
 import { Server } from 'socket.io'
 import { server, getUserData } from './httpServer.js'
 
@@ -27,7 +27,7 @@ io.on("connection", (socket) => {
     })
 
 	const sendMessageToRoom = async(roomName, messageData) => {
-		
+
 		io.to(roomName).emit('message', messageData)
 		
 		const roomRef = doc(db, "rooms", roomName)
@@ -37,7 +37,7 @@ io.on("connection", (socket) => {
 		})
 	}
 
-	const addUserToRoom = async(roomName, phoneNumber) => {
+	const addUserToRoom = async(roomName, phoneNumber, isReciever) => {
 	
 		const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
 		const userDoc = await getDoc(userRef)
@@ -106,20 +106,20 @@ io.on("connection", (socket) => {
 
 					const userRef = doc(db, "users", receiverNumber)
 					const userDoc = await getDoc(userRef)
+
 					const requestArray = userDoc.data().incomingRequests
-					console.log(requestArray)
-					console.log(roomName)
+
 					await updateDoc(userRef, {
-						incomingRequests:[roomName, ...requestArray]
+						incomingRequests: [roomName, ...requestArray]
 					})
 				}
 
 				await setDoc(doc(db, "rooms", roomName), roomData)
 
-				if (roomData.isPrivateRoom) await addUserToRoom(roomName, receiverNumber)
+				if (roomData.isPrivateRoom) await addUserToRoom(roomName, receiverNumber, true)
 			}
 
-			await addUserToRoom(roomName, phoneNumber)
+			await addUserToRoom(roomName, phoneNumber, false)
 			
 		}
 		catch(error) {
@@ -131,10 +131,29 @@ io.on("connection", (socket) => {
 		try {
 
 			if (leaveFromFirebase) {
+
 				const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
 				await deleteDoc(userRef)
-				socket.leave(roomName)
+
 				await joinOrLeaveMessage(roomName, phoneNumber, false)
+
+				let querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"))
+
+				 if (querySnapshot.empty) {
+					
+					querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
+
+					const deletePromises = [];
+					querySnapshot.forEach((document) => {
+						deletePromises.push(deleteDoc(document.ref));
+					});
+					
+					await Promise.all(deletePromises);
+					await deleteDoc(doc(db, "rooms", roomName))
+				}
+
+				console.log(phoneNumber + ' left room: ' + roomName)
+				socket.leave(roomName)
 				return
 			}
 			

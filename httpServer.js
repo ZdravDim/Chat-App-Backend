@@ -1,9 +1,10 @@
 import express from 'express';
 import http from 'http';
-import { logInSubmit, deleteAccount, collection, setDoc, getDoc, getDocs, doc, db, phoneAvailable } from './Firebase.config.js';
+import { logInSubmit, deleteAccount, collection, setDoc, getDoc, getDocs, doc, db, phoneAvailable, updateDoc } from './Firebase.config.js';
 import cors from 'cors';
 import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
+import { documentId } from 'firebase/firestore';
 
 const jwt_key = "aasgdyakk"
 const jwtExpirySeconds = 300
@@ -28,8 +29,8 @@ app.post('/api/phone-available', async function(req, res) {
         return res.status(409).send()
     }
     catch(error) {
-        console.log(error.message)
-        return res.status(500).send()
+        console.log("Error checking if phone is available: " + error.message)
+        return res.status(500).send("Error checking if phone is available: " + error.message)
     }
 
 })
@@ -47,6 +48,7 @@ app.post('/api/sign-up', async function(req, res) {
     }
     catch(error) {
         console.log("Error signing-up: " + error.message)
+        return res.status(500).send("Error signing-up: " + error.message)
     }
 })
 
@@ -83,7 +85,10 @@ app.delete('/api/delete-account', async function(req, res) {
             emptyCookie(res)
             return res.status(200).send()
         }
-        catch(error) { console.log("Error deleting account with number " + phoneNumber + ": " + error.message1) }
+        catch(error) {
+            console.log("Error deleting account with number " + phoneNumber + ": " + error.message1)
+            return res.status(500).send("Error deleting account with number " + phoneNumber + ": " + error.message1)
+        }
 
     }
 
@@ -96,18 +101,6 @@ app.post('/api/auth', function(req, res) {
     return res.status(409).send()
 
 })
-
-export const getUserData = async(phoneNumber) => {
-    console.log("Get user data for: " + phoneNumber)
-
-    const docRef = doc(db, "users", phoneNumber);
-    const docSnap = await getDoc(docRef);
-
-    const userData = docSnap.data()
-    delete userData["password"]
-    
-    return userData
-}
 
 app.post('/api/user-data', async function(req, res) {
 
@@ -202,7 +195,40 @@ app.post('/api/user-rooms', async function(req, res) {
             return res.status(200).send({ rooms: roomsArray })
 
         }
-        catch(error) { console.log("Error reading rooms for user " + phoneNumber + ": " + error.message) }
+        catch(error) {
+            console.log("Error reading rooms for user " + phoneNumber + ": " + error.message)
+            return res.status(500).send("Error reading rooms for user " + phoneNumber + ": " + error.message)
+        }
+    }
+
+    return res.status(409).send()
+})
+
+app.post('/api/accept-request', async function(req, res) {
+    
+    if (authenticateUser(req, res)) {
+        
+        const phoneNumber = req.body.phoneNumber
+        const roomName = req.body.roomName
+
+        try {
+
+            const userRef = doc(db, "users", phoneNumber)
+            const userDoc = await getDoc(userRef)
+
+            const requestArray = userDoc.data().incomingRequests
+
+            await updateDoc(userRef, {
+                incomingRequests: requestArray.filter(elem => elem !== roomName)
+            })
+
+            return res.status(200).send()
+        }
+        catch(error) {
+            console.log("Error accepting request: " + error.message)
+            return res.status(500).send("Error accepting request: " + error.message)
+        }
+
     }
 
     return res.status(409).send()
@@ -217,7 +243,7 @@ app.post('/api/room-exists', async function(req, res) {
             const roomName = req.body.roomName
             const phoneNumber = req.body.phoneNumber
 
-            console.log("Check if room exists for user: " + roomName + "(" + phoneNumber + ")")
+            console.log("Check if room exists for user: " + roomName + " (" + phoneNumber + ")")
 
             const docRef = doc(db, "rooms", roomName);
             const docSnap = await getDoc(docRef);
@@ -233,7 +259,10 @@ app.post('/api/room-exists', async function(req, res) {
             return res.status(200).send({ roomExists: false })
 
         }
-        catch(error) { console.log("Error checking if " + roomName + " exists: " + error.message) }
+        catch(error) {
+            console.log("Error checking if " + roomName + " exists: " + error.message)
+            return res.status(500).send("Error checking if " + roomName + " exists: " + error.message)
+        }
     }
 
     return res.status(409)
@@ -248,40 +277,28 @@ app.post('/api/private-room-exists', async function(req, res) {
             const phoneNumber1 = req.body.phoneNumber1
             const phoneNumber2 = req.body.phoneNumber2
 
-            let roomName = phoneNumber1 + phoneNumber2
-
-            console.log("Check if private room exists: " + roomName)
-
-            let docRef = doc(db, "rooms", roomName);
-            let docSnap = await getDoc(docRef);
-
-            const data1 = await getUserData(phoneNumber1)
-            const data2 = await getUserData(phoneNumber2)
+            let data1 = await getUserData(phoneNumber1)
+            let data2 = await getUserData(phoneNumber2)
             delete data1["userColor"]
             delete data2["userColor"]
             delete data1["phoneNumber"]
             delete data2["phoneNumber"]
 
-            if (docSnap.exists()) return res.status(200).send({
-                roomExists: true,
-                roomName: roomName,
-                user1: data1,
-                user2: data2
-            })
+            let roomName = phoneNumber1 + phoneNumber2
+            console.log("Check if private room exists: " + roomName)
+
+            let docRef = doc(db, "rooms", roomName);
+            let docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) return checkPrivateRoomUsers(data1, data2, roomName, res)
             
             roomName = phoneNumber2 + phoneNumber1
-
             console.log("Check if private room exists: " + roomName)
 
             docRef = doc(db, "rooms", roomName);
             docSnap = await getDoc(docRef);
 
-            if (docSnap.exists()) return res.status(200).send({
-                roomExists: true,
-                roomName: roomName,
-                user1: data1,
-                user2: data2
-            })
+            if (docSnap.exists()) return checkPrivateRoomUsers(data1, data2, roomName, res)
             
             return res.status(200).send({
                 roomExists: false,
@@ -299,10 +316,46 @@ app.post('/api/private-room-exists', async function(req, res) {
     return res.status(409)
 })
 
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
-});
+const checkPrivateRoomUsers = async(data1, data2, roomName, res) => {
+
+    data1.joined = false
+    data2.joined = false
+
+    const querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"));
+
+    querySnapshot.forEach((document) => {
+        switch(document.id) {
+            case data1.phoneNumber:
+                data1.joined = true
+                break
+            case data2.phoneNumber:
+                data2.joined = true
+                break
+            default:
+                console.log('Invalid document.id: ' + document.id)
+        }
+    })
+
+    return res.status(200).send({
+        roomExists: true,
+        roomName: roomName,
+        user1: data1,
+        user2: data2
+    })
+}
+
+// returns user data
+export const getUserData = async(phoneNumber) => {
+    console.log("Get user data for: " + phoneNumber)
+
+    const docRef = doc(db, "users", phoneNumber);
+    const docSnap = await getDoc(docRef);
+
+    const userData = docSnap.data()
+    delete userData["password"]
+    
+    return userData
+}
 
 // returns user phone number if authentication is successful
 const authenticateUser = (req, res) => {
@@ -334,7 +387,7 @@ const authenticateUser = (req, res) => {
             catch (error) { return null }
         }
         
-        console.log("user not authenticated")
+        console.log("User not authenticated")
         return null
     }
 }
