@@ -53,7 +53,7 @@ io.on("connection", (socket) => {
 
 		console.log(phoneNumber + ' joined room: ' + roomName)
 		socket.join(roomName)
-		if (flag) await joinOrLeaveMessage(roomName, phoneNumber, true)
+		if (flag) await joinOrLeaveMessage(roomName, phoneNumber, true, isReciever)
 	}
 
 	const extractSecondPhoneNumber = (inputString) => {
@@ -61,7 +61,7 @@ io.on("connection", (socket) => {
 		return inputString.slice(startIndex)
 	}
 
-	const joinOrLeaveMessage = async(roomName, phoneNumber, joinMessage) => {
+	const joinOrLeaveMessage = async(roomName, phoneNumber, joinMessage, isReciever) => {
 
 		const messageData = {
 			phoneNumber: phoneNumber,
@@ -73,6 +73,7 @@ io.on("connection", (socket) => {
 		await sendMessageToRoom(roomName, messageData)
 		await addMessageToFirestore(roomName, messageData)
 		
+		if (roomName[0] === '+' && joinMessage && isReciever) io.emit('update-rooms', phoneNumber)
 	}
 
 	socket.on('join', async(phoneNumber, roomName, createRoom) => {
@@ -135,7 +136,7 @@ io.on("connection", (socket) => {
 				const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
 				await deleteDoc(userRef)
 
-				await joinOrLeaveMessage(roomName, phoneNumber, false)
+				await joinOrLeaveMessage(roomName, phoneNumber, false, false)
 
 				let querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"))
 
