@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { response } from 'express';
 import http from 'http';
 import { logInSubmit, deleteAccount, collection, setDoc, getDoc, getDocs, doc, db, phoneAvailable, updateDoc } from './Firebase.config.js';
 import cors from 'cors';
@@ -57,7 +57,7 @@ app.post('/api/login', async function (req, res) {
     const { phoneNumber, password } = req.body;
     if (!phoneNumber || !password) return res.status(400).send('Missing phoneNumber or password');
     
-    const logInSuccess = await logInSubmit(req.body.phoneNumber, req.body.password)
+    const logInSuccess = await logInSubmit(req.body.phoneNumber, req.body.password, true)
 
     if (logInSuccess) {
         newCookie(res, phoneNumber)
@@ -314,6 +314,34 @@ app.post('/api/private-room-exists', async function(req, res) {
     }
 
     return res.status(409)
+})
+
+
+app.post('/api/reset-password', async function(req, res) { 
+
+    if (authenticateUser(req, res)) {
+
+        try {
+
+            const logInSuccess = await logInSubmit(req.body.phoneNumber, req.body.oldPassword, false)
+
+            if (logInSuccess) {
+                const userRef = doc(db, "users", req.body.phoneNumber)
+                await updateDoc(userRef, { password: req.body.newPassword })
+                return res.status(200).send({ success: true })
+            } 
+
+            return res.status(200).send({ success: false })
+
+        }
+        catch(error) {
+            console.log("Error reseting password: " + error.message)
+            return res.status(500).send()
+        }
+
+    }
+
+    return res.status(409).send()
 })
 
 const checkPrivateRoomUsers = async(data1, data2, roomName, res) => {

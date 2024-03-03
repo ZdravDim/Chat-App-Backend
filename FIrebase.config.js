@@ -29,13 +29,13 @@ async function addMessageToFirestore(roomName, messageData) {
 	}
 }
 
-const logInSubmit = async(phoneNumber, password) => {
+const logInSubmit = async(phoneNumber, password, loginAttempt) => {
 
 	const docRef = doc(db, "users", phoneNumber);
 	const docSnap = await getDoc(docRef);
 
 	if (docSnap.exists() && docSnap.data().password === password) {
-		console.log("Login successful.")
+		if (loginAttempt) console.log("Login successful.")
 		return true
 	}
 
