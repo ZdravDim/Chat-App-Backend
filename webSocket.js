@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
 		await sendMessageToRoom(roomName, messageData)
 		await addMessageToFirestore(roomName, messageData)
 		
-		if (roomName[0] === '+' && joinMessage && isReciever) io.emit('update-rooms', phoneNumber)
+		if (roomName[0] === '+' && joinMessage && isReciever) io.emit('update-rooms', phoneNumber, roomName)
 	}
 
 	socket.on('join', async(phoneNumber, roomName, createRoom) => {
