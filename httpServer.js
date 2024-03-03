@@ -316,6 +316,25 @@ app.post('/api/private-room-exists', async function(req, res) {
     return res.status(409)
 })
 
+app.post('/api/change-color', async function(req, res) {
+
+    if (authenticateUser(req, res)) {
+
+        try {
+            const userRef = doc(db, "users", req.body.phoneNumber)
+            await updateDoc(userRef, {
+                userColor: req.body.userColor
+            })
+            return res.status(200).send()
+        }
+        catch(error) {
+            console.log("Error changing color: " + error.message)
+            return res.status(500).send("Error changing color: " + error.message)
+        }
+
+    }
+    return res.status(409).send()
+})
 
 app.post('/api/reset-password', async function(req, res) { 
 
