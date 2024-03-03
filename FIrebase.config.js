@@ -2,15 +2,18 @@
 import { initializeApp } from "firebase/app"
 import { getFirestore, collection, updateDoc, setDoc, getDoc, getDocs, deleteDoc, doc } from "firebase/firestore"
 
+import dotenv from 'dotenv'
+dotenv.config()
+
 const firebaseConfig = {
-  apiKey: "AIzaSyA11_Orf7gStDculreYJlSbrD4ZVPhY9bQ",
-  authDomain: "chatapp-4d642.firebaseapp.com",
-  projectId: "chatapp-4d642",
-  storageBucket: "chatapp-4d642.appspot.com",
-  messagingSenderId: "711280795297",
-  appId: "1:711280795297:web:e1e9099de3d24df9bc1ae0",
-  measurementId: "G-H6FXF5V2JN"
-};
+  apiKey: process.env.API_KEY,
+  authDomain: process.env.AUTH_DOMAIN,
+  projectId: process.env.PROJECT_ID,
+  storageBucket: process.env.STORAGE_BUCKET,
+  messagingSenderId: process.env.MESSAGING_SENDER_ID,
+  appId: process.env.APP_ID,
+  measurementId: process.env.MEASUREMENT_ID
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
@@ -21,8 +24,8 @@ const db = getFirestore(app)
 // Function to add a message to Firestore
 async function addMessageToFirestore(roomName, messageData) {
 	try {
-		const messRef = doc(db, "rooms", roomName, "messages", messageData.id);
-		await setDoc(messRef, messageData);
+		const messRef = doc(db, "rooms", roomName, "messages", messageData.id)
+		await setDoc(messRef, messageData)
 	}
 	catch (e) {
 		console.error("Error adding message to Firestore: ", e)
@@ -31,8 +34,8 @@ async function addMessageToFirestore(roomName, messageData) {
 
 const logInSubmit = async(phoneNumber, password, loginAttempt) => {
 
-	const docRef = doc(db, "users", phoneNumber);
-	const docSnap = await getDoc(docRef);
+	const docRef = doc(db, "users", phoneNumber)
+	const docSnap = await getDoc(docRef)
 
 	if (docSnap.exists() && docSnap.data().password === password) {
 		if (loginAttempt) console.log("Login successful.")
@@ -52,8 +55,8 @@ const deleteAccount = async(phoneNumber) => {
 
 const phoneAvailable = async(phoneNumber) => {
 
-	const docRef = doc(db, "users", phoneNumber);
-	const docSnap = await getDoc(docRef);
+	const docRef = doc(db, "users", phoneNumber)
+	const docSnap = await getDoc(docRef)
 	return !docSnap.exists()
 }
 

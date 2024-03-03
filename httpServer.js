@@ -1,23 +1,22 @@
-import express, { response } from 'express';
-import http from 'http';
-import { logInSubmit, deleteAccount, collection, setDoc, getDoc, getDocs, doc, db, phoneAvailable, updateDoc } from './Firebase.config.js';
-import cors from 'cors';
-import cookieParser from "cookie-parser";
-import jwt from 'jsonwebtoken';
-import { documentId } from 'firebase/firestore';
+import express from 'express'
+import http from 'http'
+import { logInSubmit, deleteAccount, collection, setDoc, getDoc, getDocs, doc, db, phoneAvailable, updateDoc } from './Firebase.config.js'
+import cors from 'cors'
+import cookieParser from "cookie-parser"
+import jwt from 'jsonwebtoken'
 
-const jwt_key = "aasgdyakk"
+const JWT_KEY = process.env.JWT_KEY
 const jwtExpirySeconds = 300
 const oneDay = 24 * 60 * 60 * 1000 // in miliseconds
 
-const app = express();
+const app = express()
 
-const server = http.createServer(app);
+const server = http.createServer(app)
 
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cors({ origin: "http://localhost:3000", credentials: true }))
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser())
 
 app.post('/api/phone-available', async function(req, res) {
 
@@ -43,7 +42,7 @@ app.post('/api/sign-up', async function(req, res) {
     const phoneNumber = userData.phoneNumber
 
     try {
-        await setDoc(doc(db, "users", phoneNumber), userData);
+        await setDoc(doc(db, "users", phoneNumber), userData)
         return res.status(200).send()
     }
     catch(error) {
@@ -54,8 +53,8 @@ app.post('/api/sign-up', async function(req, res) {
 
 app.post('/api/login', async function (req, res) {
 
-    const { phoneNumber, password } = req.body;
-    if (!phoneNumber || !password) return res.status(400).send('Missing phoneNumber or password');
+    const { phoneNumber, password } = req.body
+    if (!phoneNumber || !password) return res.status(400).send('Missing phoneNumber or password')
     
     const logInSuccess = await logInSubmit(req.body.phoneNumber, req.body.password, true)
 
@@ -66,7 +65,7 @@ app.post('/api/login', async function (req, res) {
 
     return res.status(401).send()
     
-});
+})
 
 app.get('/api/logout', function(req, res) {
 
@@ -147,8 +146,8 @@ app.post('/api/user-exists', async function(req, res) {
 
             const phoneNumber = req.body.phoneNumber
             
-            const docRef = doc(db, "users", phoneNumber);
-            const docSnap = await getDoc(docRef);
+            const docRef = doc(db, "users", phoneNumber)
+            const docSnap = await getDoc(docRef)
             
             if (docSnap.exists()) return res.status(200).send({"userExists": true})
             
@@ -180,17 +179,17 @@ app.post('/api/user-rooms', async function(req, res) {
 
             querySnapshot.forEach(async(document) => {
 
-                const userDocRef = doc(db, "rooms", document.id, "users", phoneNumber);
+                const userDocRef = doc(db, "rooms", document.id, "users", phoneNumber)
 
                 promises.push(getDoc(userDocRef).then((userSnapshot) => {
                     if (userSnapshot.exists()) {
-                        roomsArray.push(document.data());
+                        roomsArray.push(document.data())
                     }
-                }));
+                }))
 
-            });
+            })
 
-            await Promise.all(promises);
+            await Promise.all(promises)
 
             return res.status(200).send({ rooms: roomsArray })
 
@@ -245,13 +244,13 @@ app.post('/api/room-exists', async function(req, res) {
 
             console.log("Check if room exists for user: " + roomName + " (" + phoneNumber + ")")
 
-            const docRef = doc(db, "rooms", roomName);
-            const docSnap = await getDoc(docRef);
+            const docRef = doc(db, "rooms", roomName)
+            const docSnap = await getDoc(docRef)
 
             if (docSnap.exists()) {
                 
-                const userRef = doc(db, "rooms", roomName, "users", phoneNumber);
-                const userDoc = await getDoc(userRef);
+                const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
+                const userDoc = await getDoc(userRef)
 
                 return res.status(200).send({ roomExists: true, userIsJoined: userDoc.exists() })
             }
@@ -287,16 +286,16 @@ app.post('/api/private-room-exists', async function(req, res) {
             let roomName = phoneNumber1 + phoneNumber2
             console.log("Check if private room exists: " + roomName)
 
-            let docRef = doc(db, "rooms", roomName);
-            let docSnap = await getDoc(docRef);
+            let docRef = doc(db, "rooms", roomName)
+            let docSnap = await getDoc(docRef)
 
             if (docSnap.exists()) return checkPrivateRoomUsers(data1, data2, roomName, res)
             
             roomName = phoneNumber2 + phoneNumber1
             console.log("Check if private room exists: " + roomName)
 
-            docRef = doc(db, "rooms", roomName);
-            docSnap = await getDoc(docRef);
+            docRef = doc(db, "rooms", roomName)
+            docSnap = await getDoc(docRef)
 
             if (docSnap.exists()) return checkPrivateRoomUsers(data1, data2, roomName, res)
             
@@ -368,7 +367,7 @@ const checkPrivateRoomUsers = async(data1, data2, roomName, res) => {
     data1.joined = false
     data2.joined = false
 
-    const querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"));
+    const querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"))
 
     querySnapshot.forEach((document) => {
         switch(document.id) {
@@ -395,8 +394,8 @@ const checkPrivateRoomUsers = async(data1, data2, roomName, res) => {
 export const getUserData = async(phoneNumber) => {
     console.log("Get user data for: " + phoneNumber)
 
-    const docRef = doc(db, "users", phoneNumber);
-    const docSnap = await getDoc(docRef);
+    const docRef = doc(db, "users", phoneNumber)
+    const docSnap = await getDoc(docRef)
 
     const userData = docSnap.data()
     delete userData["password"]
@@ -427,7 +426,7 @@ const authenticateUser = (req, res) => {
                 const now = Date.now()
                 token_payload.iat = now
                 token_payload.exp = now + jwtExpirySeconds * 1000
-                const access_token = jwt.sign(token_payload, jwt_key);
+                const access_token = jwt.sign(token_payload, JWT_KEY)
                 res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
                 return token_payload.sub
             }
@@ -441,7 +440,7 @@ const authenticateUser = (req, res) => {
 
 // verifies jwt
 const verifyToken = (token) => {
-    return jwt.verify(token, jwt_key)
+    return jwt.verify(token, JWT_KEY)
 }
 
 // sets new cookie that stores empty jwt
@@ -452,14 +451,14 @@ const emptyCookie = (res) => {
         httpOnly: true,
         sameSite: 'None',
         secure: true
-    });
+    })
 
     res.cookie('refresh_token', null, {
         maxAge: 0,
         httpOnly: true,
         sameSite: 'None',
         secure: true
-    });
+    })
 
 }
 
@@ -474,11 +473,11 @@ const newCookie = (res, phoneNumber) => {
         exp: now + jwtExpirySeconds * 1000
     }
 
-    const access_token = jwt.sign(token_payload, jwt_key)
+    const access_token = jwt.sign(token_payload, JWT_KEY)
 
     token_payload.exp += oneDay
 
-    const refresh_token = jwt.sign(token_payload, jwt_key)
+    const refresh_token = jwt.sign(token_payload, JWT_KEY)
 
     res.cookie('access_token', access_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: jwtExpirySeconds * 1000})
     res.cookie('refresh_token', refresh_token, {httpOnly: true, sameSite: 'None', secure: true,  maxAge: oneDay})

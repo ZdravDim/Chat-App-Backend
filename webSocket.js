@@ -144,12 +144,12 @@ io.on("connection", (socket) => {
 					
 					querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
 
-					const deletePromises = [];
+					const deletePromises = []
 					querySnapshot.forEach((document) => {
-						deletePromises.push(deleteDoc(document.ref));
-					});
+						deletePromises.push(deleteDoc(document.ref))
+					})
 					
-					await Promise.all(deletePromises);
+					await Promise.all(deletePromises)
 					await deleteDoc(doc(db, "rooms", roomName))
 				}
 
