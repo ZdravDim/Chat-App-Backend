@@ -13,7 +13,7 @@ const app = express()
 
 const server = http.createServer(app)
 
-app.use(cors({ origin: "https://zdravdim.github.io/", credentials: true }))
+app.use(cors({ origin: "https://zdravdim.github.io", credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
@@ -281,8 +281,6 @@ app.post('/api/private-room-exists', async function(req, res) {
             let data2 = await getUserData(phoneNumber2)
             delete data1["userColor"]
             delete data2["userColor"]
-            delete data1["phoneNumber"]
-            delete data2["phoneNumber"]
 
             let roomName = phoneNumber1 + phoneNumber2
             console.log("Check if private room exists: " + roomName)
