@@ -38,6 +38,7 @@ app.post('/api/sign-up', async function(req, res) {
 
     let userData = req.body
     userData.incomingRequests = []
+    userData.joinedRooms = []
     userData.userColor = '#' + Math.floor(Math.random() * 16777215).toString(16)
     const phoneNumber = userData.phoneNumber
 
@@ -85,8 +86,8 @@ app.delete('/api/delete-account', async function(req, res) {
             return res.status(200).send()
         }
         catch(error) {
-            console.log("Error deleting account with number " + phoneNumber + ": " + error.message1)
-            return res.status(500).send("Error deleting account with number " + phoneNumber + ": " + error.message1)
+            console.log("Error deleting account with number " + phoneNumber + ": " + error.message)
+            return res.status(500).send("Error deleting account with number " + phoneNumber + ": " + error.message)
         }
 
     }

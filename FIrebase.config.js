@@ -27,8 +27,8 @@ async function addMessageToFirestore(roomName, messageData) {
 		const messRef = doc(db, "rooms", roomName, "messages", messageData.id)
 		await setDoc(messRef, messageData)
 	}
-	catch (e) {
-		console.error("Error adding message to Firestore: ", e)
+	catch (error) {
+		console.error("Error adding message to Firestore: ", error.message)
 	}
 }
 
@@ -48,6 +48,46 @@ const logInSubmit = async(phoneNumber, password, loginAttempt) => {
 
 const deleteAccount = async(phoneNumber) => {
 
+	// remove user from rooms, before deleting user
+	const removeUserPromises = []
+	const roomsToCheckIfEmpty = []
+
+	const userRooms = (await getDoc(doc(db, "users", phoneNumber))).data().joinedRooms
+
+	userRooms.forEach(async(roomName) => {
+
+		const userDocRef = doc(db, "rooms", roomName, "users", phoneNumber)
+
+		removeUserPromises.push(deleteDoc(userDocRef))
+		roomsToCheckIfEmpty.push(roomName)
+
+	})
+
+	await Promise.all(removeUserPromises)
+
+	// delete rooms are empty, delete if true
+	const removeRoomsPromises = roomsToCheckIfEmpty.map(async (roomName) => {
+		
+		// await joinOrLeaveMessage(roomName, phoneNumber, false, false)
+	
+		let querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"))
+	
+		if (querySnapshot.empty) {
+			querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
+			
+			const deletePromises = []
+			querySnapshot.forEach((document) => {
+				deletePromises.push(deleteDoc(document.ref))
+			})
+			
+			await Promise.all(deletePromises)
+			await deleteDoc(doc(db, "rooms", roomName))
+		}
+	})
+
+	await Promise.all(removeRoomsPromises)
+
+	// delete user
 	await deleteDoc(doc(db, "users", phoneNumber))
 	
 	console.log('Account with phone: ' + phoneNumber + ' is deleted')

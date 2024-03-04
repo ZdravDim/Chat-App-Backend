@@ -39,7 +39,7 @@ io.on("connection", (socket) => {
 
 	const addUserToRoom = async(roomName, phoneNumber, isReciever) => {
 	
-		const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
+		let userRef = doc(db, "rooms", roomName, "users", phoneNumber)
 		const userDoc = await getDoc(userRef)
 
 		let flag = false
@@ -49,6 +49,15 @@ io.on("connection", (socket) => {
 			flag = true
 			const userData = { phoneNumber: phoneNumber }
 			await setDoc(userRef, userData)
+
+			// update user, add room
+			userRef = doc(db, "users", phoneNumber)
+
+			let joinedRooms = (await getDoc(userRef)).data().joinedRooms
+
+			await updateDoc((userRef), {
+				joinedRooms: [...joinedRooms, roomName]
+			})
 		}
 
 		console.log(phoneNumber + ' joined room: ' + roomName)
@@ -133,14 +142,14 @@ io.on("connection", (socket) => {
 
 			if (leaveFromFirebase) {
 
-				const userRef = doc(db, "rooms", roomName, "users", phoneNumber)
+				let userRef = doc(db, "rooms", roomName, "users", phoneNumber)
 				await deleteDoc(userRef)
 
 				await joinOrLeaveMessage(roomName, phoneNumber, false, false)
 
 				let querySnapshot = await getDocs(collection(db, "rooms", roomName, "users"))
 
-				 if (querySnapshot.empty) {
+				if (querySnapshot.empty) {
 					
 					querySnapshot = await getDocs(collection(db, "rooms", roomName, "messages"))
 
@@ -152,6 +161,15 @@ io.on("connection", (socket) => {
 					await Promise.all(deletePromises)
 					await deleteDoc(doc(db, "rooms", roomName))
 				}
+
+				// update user, remove room
+				userRef = doc(db, "users", phoneNumber)
+
+				let joinedRooms = (await getDoc(userRef)).data().joinedRooms
+
+				await updateDoc((userRef), {
+					joinedRooms: joinedRooms.filter(elem => elem !== roomName)
+				})
 
 				console.log(phoneNumber + ' left room: ' + roomName)
 				socket.leave(roomName)
