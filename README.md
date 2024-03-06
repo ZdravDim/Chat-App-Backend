@@ -22,7 +22,7 @@
 - Download https://github.com/ZdravDim/Chat-App-Front-Web/blob/main/docker-compose.yaml
 - Use the `cd` command to navigate to folder containing downloaded file
 - Then run `docker-compose up`
-- Frontend will run on http://localhost:443
+- Frontend will run on http://localhost:80
 - Backend will run on http://localhost:8080
 
 ### Backend only
