@@ -3,7 +3,6 @@
 - Custom backend for Chat App Front
 - Http + WebSocket Server
 - Containerized app
-- Uploaded to Azure Cloud
 
 ## Technologies
 
@@ -23,9 +22,9 @@
 - Download https://github.com/ZdravDim/Chat-App-Front-Web/blob/main/docker-compose.yaml
 - Use the `cd` command to navigate to folder containing downloaded file
 - Then run `docker-compose up`
-- Frontend will run on http://localhost:3000
-- Backend will run on http://localhost:3001
+- Frontend will run on http://localhost:443
+- Backend will run on http://localhost:8080
 
 ### Backend only
 
-- Run `npm start` to start the project, it will run on http://localhost:3001
+- Run `npm start` to start the project, it will run on http://localhost:8080
