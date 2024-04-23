@@ -12,11 +12,16 @@
 
 ## Installation
 
+> [!NOTE]
+> Project depends on Firebase configuration, which is set in environment variables, so in order to start up the project by cloning, you need to setup you own Firebase project and put configuration in .env file
+
 - Use the `git clone https://github.com/ZdravDim/Chat-App-Backend.git` command to clone the project and then `npm install` to install dependencies.
 
-## Starting up the project
+### Only Backend ( requires you to set up a Firebase project )
 
-### Both frontend and backend
+- Run `npm start` to start the project, it will run on http://localhost:8080
+
+### Frontend and Backend ( doesn't require you to set up a Firebase project )
 
 - Install [Docker](https://www.docker.com/products/docker-desktop)
 - Download https://github.com/ZdravDim/Chat-App-Front-Web/blob/main/docker-compose.yaml
@@ -24,7 +29,3 @@
 - Then run `docker-compose up`
 - Frontend will run on http://localhost:80
 - Backend will run on http://localhost:8080
-
-### Backend only
-
-- Run `npm start` to start the project, it will run on http://localhost:8080
